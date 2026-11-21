@@ -1,5 +1,30 @@
 # From Pixels to LaTeX: math symbol image → LaTeX command (APS360)
 
+Solo APS360 course project (Alan Wang). Input: a 32x32 image of one math symbol; output: its LaTeX
+command (160 classes). Models: ANN baseline and CNN primary, trained on rendered printed symbols
+(18 math fonts, split by font family) and tested on unseen fonts and, zero-shot and after fine-tuning,
+on handwritten symbols (HASYv2). Flat printed equations (stage 2) are a stretch goal for the final report.
+
+## Current validation results (unseen fonts / writers)
+| Model | Params | Printed acc | Printed (merged) | Augmented | Handwriting zero-shot | Handwriting fine-tuned |
+|---|---|---|---|---|---|---|
+| ANN (baseline) | 316k | 96.3 | 98.4 | 85.6 | 49.4 | 68.7 |
+| CNN (primary)  | 692k | 98.0 | 98.9 | 94.1 | 63.3 | 78.4 |
+
+"Merged": a prediction in the true class's near-identical group (e.g. o / O / 0) counts as correct.
+All numbers come from `figures/results_macros.tex`, written by `src/training/train.py`.
+
+## Quick start (Windows, from the project folder)
+```powershell
+python -m venv .venv; .venv\Scripts\Activate.ps1
+.\setup_gpu.ps1                                   # CUDA build of PyTorch + requirements (NVIDIA GPU)
+python src/data_collection/get_fonts.py
+python src/data_collection/make_dataset.py
+python src/data_collection/hasy.py                # after downloading HASYv2 into data/raw/ (see below)
+python src/training/tune.py
+python src/training/train.py --finetune
+```
+
 ## Layout
 ```
 src/
@@ -11,7 +36,7 @@ src/
     augment.py          rotation, scale, shift, stroke weight, blur, noise + handwriting-style
                         elastic warp, slant, pen-line redraw, binarize (seeded)
     make_dataset.py     2  builds data/*.npz + meta.json + class_counts / look_alike_pairs / font_distances
-    make_equations.py   2b flat equations (grammar, one font per equation) -> data/equations/ (images + boxes)
+    make_equations.py   2b flat equations (grammar, one font per equation) -> data/equations/ (stretch goal)
     data_figures.py     3  dataset figures (figures/) + per-font QA sheets (figures/qa/)
     hasy.py             4  HASYv2 handwritten symbols -> my classes, same normalization -> data/hasy.npz
   training/             steps 5-6: train the models (GPU if available)
@@ -25,8 +50,8 @@ src/
     plotting.py         plot_training_curve (Lab 3), report figures
     report.py           LaTeX tables + macros for the report
     final_test.py       7  evaluate the final models ONCE on test fonts + HASY test writers
-    segment.py          stage 2: connected components + overlap merge; checks itself vs true boxes
-    equation_eval.py    stage 2: segment -> classify -> exact match (val fonts; --test at the end)
+    segment.py          stage 2 (stretch): connected components + overlap merge; checks itself vs true boxes
+    equation_eval.py    stage 2 (stretch): segment -> classify -> exact match (val fonts; --test at the end)
 report/                 progress_report.tex (numbers fill in from figures/*_macros.tex)
 fonts/  data/  results/  figures/qa/   generated, not in git
 ```
@@ -36,7 +61,7 @@ fonts/  data/  results/  figures/qa/   generated, not in git
 pip install -r requirements.txt
 python src/data_collection/get_fonts.py      # prints which fonts were found / downloaded
 python src/data_collection/make_dataset.py   # defaults: --n-train 60 --n-eval 10 --seed 360
-python src/data_collection/make_equations.py # stage 2: 2000 / 500 / 500 equations (train / val / test fonts)
+python src/data_collection/make_equations.py # stage 2 (stretch goal): 2000 / 500 / 500 equations
 python src/data_collection/data_figures.py
 ```
 
@@ -73,16 +98,17 @@ the augmented copies (`aug == 1`) are a robustness check.
 - Coverage gaps (classes skipped for that font): Euler has no `\varrho`, `\varsigma`; FiraMath has no `\perp`.
 
 ## Training and evaluation (local; GPU if available, otherwise CPU)
-GPU (Windows, NVIDIA): `powershell -ExecutionPolicy Bypass -File setup_gpu.ps1` installs the CUDA build of
+GPU (Windows, NVIDIA): `.\setup_gpu.ps1` (in a PowerShell terminal) installs the CUDA build of
 PyTorch matching your driver into `.venv`; then run everything with `.venv\Scripts\python`.
 The training scripts use the GPU automatically when `torch.cuda.is_available()`.
 ```bash
-python src/training/tune.py                  # grid search: 6 epochs on 30 % of train; select on printed + handwritten val
-python src/training/train.py                 # ANN + CNN, 12 epochs, tuned size + lr (else defaults), Adam, cosine
+python src/training/tune.py                  # grid search (lr, batch size, model size): 6 epochs on 30 % of train;
+                                             #   score = mean of printed and handwritten val error
+python src/training/train.py                 # ANN + CNN, 12 epochs, tuned size / lr / batch (else defaults), Adam, cosine
 python src/training/train.py --load          # reuse results/<model>.pt, only re-evaluate (fast)
-python src/training/train.py --finetune      # + fine-tune on printed + HASYv2 train (6 epochs, lr 3e-4)
-python src/evaluation/segment.py             # stage 2 segmentation check (no PyTorch needed)
-python src/evaluation/equation_eval.py       # stage 2: whole equations with the trained ANN / CNN
+python src/training/train.py --finetune      # + fine-tune on printed + HASYv2 train (16 epochs, lr 3e-4, best epoch kept)
+python src/evaluation/segment.py             # stage 2 (stretch) segmentation check (no PyTorch needed)
+python src/evaluation/equation_eval.py       # stage 2 (stretch): whole equations with the trained ANN / CNN
 python src/evaluation/final_test.py          # ONCE, at the end: test fonts + HASY test writers
 ```
 `train.py` keeps the epoch with the lowest clean-val error (`results/<model>.pt`, `results/<model>.json`; every
@@ -90,8 +116,8 @@ epoch's checkpoint in `results/ckpt/`, curves as CSV in `results/curves/`) and w
 `figures/fig_curves`, `fig_errors`, `results_table.tex`, `confusions_table.tex`, `results_macros.tex`,
 `near_identical.tex`, and with `data/hasy.npz` also `hasy_table.tex`, `fig_hasy`.
 `tune.py` writes `figures/tuning_table.tex`, `fig_tuning`; `final_test.py` writes `test_table.tex`, `test_macros.tex`.
-Model sizes (smaller since Nov 20 to cut training time): ANN 256-128 (316k parameters),
-CNN channels 16-32-64 + FC 128 (175k parameters).
+Selected models (tuning): ANN 1024-256-128-160 (316k parameters, lr 3e-3, batch 256);
+CNN 4 conv blocks with 32-64-128-256 channels + FC 256 (692k parameters, lr 1e-3, batch 64).
 Main metrics: top-1 / top-5 / macro-F1 on clean images of the unseen val fonts; augmented copies as a robustness check.
 
 - **Pairs merged:** every metric is also computed with the near-identical groups in `src/data_collection/symbols.py`
@@ -102,3 +128,12 @@ Main metrics: top-1 / top-5 / macro-F1 on clean images of the unseen val fonts; 
   with no known writer (and no images at all of 24 classes). Split: identified writers, whole writers,
   ~50 % of their images -> train, ~25 % -> val, ~25 % -> test; the bulk id -> train. Fine-tuning samples
   class-balanced batches, half printed and half handwritten.
+
+## Report
+`report/progress_report.tex` (course template) reads every number from `figures/*_macros.tex` and every
+table from `figures/*.tex`, so re-running the scripts updates it; compile from inside `report/`.
+
+## AI usage
+Claude (Anthropic) was used as a coding and writing assistant: it helped implement parts of the code (in
+particular data generation and the evaluation / plotting helpers), wrote most code comments, and helped
+edit the report. The model and training-loop code follows the APS360 Lab 3 templates.
