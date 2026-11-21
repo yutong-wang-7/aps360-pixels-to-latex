@@ -14,6 +14,9 @@ on handwritten symbols (HASYv2). Flat printed equations (stage 2) are a stretch 
 "Merged": a prediction in the true class's near-identical group (e.g. o / O / 0) counts as correct.
 All numbers come from `figures/results_macros.tex`, written by `src/training/train.py`.
 
+How every dataset is generated and processed (classes, fonts, rendering, augmentation, HASYv2 split,
+equation grammar): see [`data_generation.md`](data_generation.md).
+
 ## Quick start (Windows, from the project folder)
 ```powershell
 python -m venv .venv; .venv\Scripts\Activate.ps1
