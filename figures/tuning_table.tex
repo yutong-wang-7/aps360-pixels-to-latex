@@ -1,0 +1,17 @@
+\begin{tabular}{llrrrr}
+\toprule
+Model & Setting & Params & Best epoch & Val acc & Hand. val acc \\
+\midrule
+ANN (baseline), best 5 of 16 & lr 0.003, bs 256, hidden 256 & 316k & 6 & \textbf{93.1} & \textbf{41.6} \\
+ & lr 0.001, bs 64, hidden 256 & 316k & 6 & 93.1 & 41.5 \\
+ & lr 0.003, bs 64, hidden 256 & 316k & 6 & 91.4 & 42.0 \\
+ & lr 0.001, bs 256, hidden 256 & 316k & 6 & 90.1 & 40.4 \\
+ & lr 0.003, bs 256, hidden 128 & 168k & 6 & 90.3 & 39.0 \\
+\midrule
+CNN (primary), best 5 of 96 & lr 0.001, bs 64, layers 4, ch 32, hidden 256 & 692k & 6 & \textbf{97.0} & \textbf{62.9} \\
+ & lr 0.001, bs 64, layers 3, ch 32, hidden 256 & 659k & 6 & 97.8 & 61.0 \\
+ & lr 0.001, bs 256, layers 4, ch 32, hidden 256 & 692k & 6 & 96.0 & 62.6 \\
+ & lr 0.001, bs 64, layers 4, ch 16, hidden 256 & 270k & 4 & 97.1 & 61.4 \\
+ & lr 0.0003, bs 64, layers 4, ch 32, hidden 128 & 541k & 4 & 97.0 & 60.5 \\
+\bottomrule
+\end{tabular}

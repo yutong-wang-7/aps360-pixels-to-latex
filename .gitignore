@@ -1,0 +1,24 @@
+fonts/*.otf
+fonts/*.ttf
+data/
+figures/qa/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# LaTeX build artifacts (report/)
+report/*.aux
+report/*.log
+report/*.out
+report/*.fls
+report/*.fdb_latexmk
+report/*.synctex.gz
+
+# training outputs (weights, histories); report figures go to figures/
+results/
+runs/
+data/raw/
+
+# local Python environment and editor previews
+.venv/
+report/_preview/

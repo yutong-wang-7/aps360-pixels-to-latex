@@ -1,0 +1,5 @@
+numpy
+pillow>=10
+fonttools
+matplotlib
+torch
